@@ -86,6 +86,7 @@
    ```
 
 3. บันทึกไฟล์ สั่ง `dotnet run` อีกครั้ง แล้วกด Refresh บนเบราว์เซอร์เพื่อดูผลลัพธ์
+<img width="417" height="117" alt="image" src="https://github.com/user-attachments/assets/ec5acaaf-11d8-42cd-9352-4d28aaaa5ba0" />
 
 ---
 
@@ -177,10 +178,64 @@
    - `timestamp`= เวลาปัจจุบันของเซิร์ฟเวอร์ (`DateTime.Now.ToString(...)`)
 
  **หลักฐานการส่งงาน** บันทึกภาพหน้าจอเบราว์เซอร์ที่เปิดแสดงผล JSON จาก `/api/student` พร้อมโค้ดใน VS Code ลงในรายงานผลการทดลอง
+<img width="537" height="247" alt="image" src="https://github.com/user-attachments/assets/cbf7b90b-ac66-43ef-8003-e2f1bb75e410" />
 
+
+
+**Code**
+```
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet("/", () => "Welcome to IoT Edge Gateway by Poomchana Tiamkeaw 67030180!");
+
+app.MapGet("/api/status", () => new {
+    gateway = "ESP32-EdgeGateway",
+    status = "Online",
+    uptimeSeconds = Environment.TickCount64 / 1000,
+    isHealthy = true
+});
+
+app.MapGet("/api/led/{state}", (string state) => {
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] LED Control: {state}");
+    string action = state.ToLower() == "on" ? "TURN ON 💡" : "TURN OFF 🌑";
+    return Results.Ok(new { 
+        device = "LED_D2", 
+        requestedState = state, 
+        actionResult = action,
+        serverTime = DateTime.Now.ToString("HH:mm:ss")
+    });
+});
+
+app.MapGet("/api/student", () => new {
+    studentId = "67030180",
+    studentName = "Poomchana Tiamkeaw",
+    faculty = "คณะครุศาสตร์อุตสาหกรรมและเทคโนโลยี สาขาเทคโนโลยีคอมพิวเตอร์", 
+    targetSensor = "DHT22",                      
+    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+});
+
+app.Run();
+```
 ---
 
 ## คำถามท้ายการทดลอง (Review Questions)
 1. ในสถาปัตยกรรมของ Kestrel ตัวแปร `builder` ทำหน้าที่อะไร และตัวแปร `app` ทำหน้าที่อะไร
+- builder คือขั้นตอนเตรียมของเอาไว้ตั้งค่าพื้นฐาน ติดตั้งเครื่องมือ หรือเตรียมระบบต่างๆ ก่อนที่เว็บจะเริ่มทำงาน
+app คือตัวเว็บที่พร้อมทำงานจริงรับหน้าที่คอยวิ่งจัดการ Request ที่เข้ามา เช่น การกำหนดเส้นทาง (app.MapGet) และสั่งให้เซิร์ฟเวอร์เริ่มทำงาน (app.Run)
 2. เปรียบเทียบความสะดวกระหว่างการสร้าง Web Server บน .NET Minimal API กับการรันผ่าน LAMP Stack (Apache + PHP) ว่ามีข้อดีข้อเสียต่างกันอย่างไรในมุมมองของงาน IoT Gateway
+- ข้อดีของ .NET Minimal API คือ
+เบาและเร็วกว่าไม่กินเครื่อง ใช้ RAM/CPU น้อยมาก เพราะรันเป็นไฟล์เดียวจบ
+ตั้งค่าง่ายไม่ต้องลงโปรแกรมจำพวก Apache หรือนั่งแก้ไฟล์ Config ให้วุ่นวาย เขียนโค้ดเสร็จสั่งรันได้เลย เหมาะกับบอร์ด IoT เล็กๆ มาก
+- ข้อเสียของ .NET Minimal API:
+ถ้าต้องทำเว็บขนาดใหญ่ที่มีหน้าตาซับซ้อน หรือใช้ CMS การจัดการอาจจะไม่สะดวกเท่า LAMP Stack
+- ข้อดีของLAMP Stack (Apache + PHP)
+เครื่องมือและปลั๊กอินเยอะ เหมาะกับงานเว็บทั่วไปที่มีการต่อฐานข้อมูลใหญ่ๆ
+- ข้อเสียของLAMP Stack
+หนักเครื่องเพราะต้องเปิดทั้ง Apache และ PHP พร้อมกัน กินทรัพยากรบอร์ด IoT เกินความจำเป็น และขั้นตอนติดตั้งตั้งค่าซับซ้อนกว่า
 3. นักศึกษาคิดว่าการเพิ่ม `/api/` เข้าไปใน route นั้นมีประโยชน์อย่างไรบ้าง ถ้าไม่ใส่จะเกิดปัญหาอะไรบ้าง
+- ช่วยแยกประเภททำให้รูทันทีว่า URL นี้เรียกเอาข้อมูล (เช่น JSON) ไม่ใช่การเรียกเปิดหน้าเว็บทั่วไป (HTML)
+จัดระเบียบง่ายเวลาระบบใหญ่ขึ้น จะบริหารจัดการสิทธิ์ความปลอดภัย หรือแบ่งเวอร์ชัน (เช่น /api/v1/) ได้สะดวก ไม่ปนกับส่วนอื่น
+ถ้าไม่ใส่ /api/ จะเกิดปัญหาอะไร
+ชื่อ URL ชนกันเองถ้าวันหลังทำหน้าเว็บชื่อ /student ขึ้นมา มันจะไปซ้ำกับตัวคืนค่าข้อมูล /student จนระบบสับสนว่าต้องส่งหน้าเว็บหรือส่ง JSON กลับมา
+ตั้งค่าความปลอดภัยยากเวลาจะล็อกดาวน์หรือเช็กสิทธิ์เฉพาะส่วนที่เป็น API จะทำได้ยาก เพราะ URL ปะปนไปกับหน้าเว็บปกติครับ
